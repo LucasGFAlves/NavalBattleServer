@@ -1,4 +1,7 @@
 var players = [{connect: false}, {connect: false}];
+var totalHits = 18;
+var isStarted = false;
+var isFinished = false;
 
 players[0].ships = [
     ["agu", "agu", "agu", "agu", "agu", "ct1", "ct2", "agu", "agu", "agu"], // 1
@@ -14,17 +17,18 @@ players[0].ships = [
 ];
 
 players[0].hits = [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false]
 ];
+players[0].hitsCount = 0;
 
 players[1].ships = [
     ["agu", "agu", "agu", "agu", "agu", "ct1", "ct2", "agu", "agu", "agu"], // 1
@@ -40,17 +44,23 @@ players[1].ships = [
 ];
 
 players[1].hits = [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false]
 ];
+players[1].hitsCount = 0;
+
+currentPlayer = 0;
+lastCurrentPlayer = null;
+lastRow = null;
+lastCol = null;
 
 class ShotController {
     async all(request, response) {
@@ -62,9 +72,22 @@ class ShotController {
     async shoot(request, response) {
         response.header("Access-Control-Allow-Origin", "*");
 
-        players[request.params.id].hits[request.params.row][request.params.col] = 1;
+        currentPlayer = 1 - currentPlayer;
+        players[currentPlayer].hits[request.params.row][request.params.col] = true;
+        let hit = players[currentPlayer].ships[request.params.row][request.params.col] != "agu";
+        if (hit)
+        {
+            players[currentPlayer].hitsCount++;
+            if (totalHits == players[currentPlayer].hitsCount)
+            {
+                isFinished = true;
+            }
+        }
+        lastCurrentPlayer = currentPlayer;
+        lastRow = request.params.row;
+        lastCol = request.params.col;
 
-        response.json({});
+        response.json(players[currentPlayer].ships[request.params.row][request.params.col]);
     }
 
     async connect(request, response) {
@@ -75,14 +98,67 @@ class ShotController {
             position++;
         }
         players[position].connect = true;
+        if (players[1].connect)
+        {
+            isStarted = true;
+        }
         
         response.json(position);
     }
 
-    async isStarted(request, response) {
+    async gameControl(request, response) {
         response.header("Access-Control-Allow-Origin", "*");
 
-        response.json({isStarted: players[position].connect});
+        response.json({
+            isStarted: isStarted,
+            isFinished: isFinished,
+            currentPlayer: currentPlayer,
+            lastCurrentPlayer: lastCurrentPlayer,
+            lastRow: lastRow,
+            lastCol: lastCol,
+            hitsCount: [players[0].hitsCount, players[1].hitsCount]
+        });
+    }
+
+    async getTables(request, response) {
+        response.header("Access-Control-Allow-Origin", "*");
+
+        let ships = [
+            [
+                [], [], [], [], [], [], [], [], [], []
+            ],
+            [
+                [], [], [], [], [], [], [], [], [], []
+            ]
+        ];
+        let hits = [
+            [
+                [], [], [], [], [], [], [], [], [], []
+            ],
+            [
+                [], [], [], [], [], [], [], [], [], []
+            ]
+        ];
+
+        for (let position = 0; position <= 1; ++position)
+        {
+            for (let i = 0; i < 10; i++)
+            {
+                for (let j = 0; j < 10; j++)
+                {
+                    if (request.params.id != position && players[position].hits[i][j] == 0)
+                    {
+                        ships[position][i][j] = "unk";
+                    }
+                    else
+                    {
+                        ships[position][i][j] = players[position].ships[i][j];
+                    }
+                    hits[position][i][j] = players[position].hits[i][j];
+                }
+            }
+        }
+        response.json({ships: ships, hits: hits});
     }
 }
 
